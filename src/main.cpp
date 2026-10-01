@@ -4,11 +4,26 @@
 #include "color.h"
 #include "ray.h"
 
+double hit_sphere(const point3& center, double radius, const ray&r){
+    vec3 oc = r.origin() - center;
+    auto a =  dot(r.direction(), r.direction());
+    auto half_b = dot(oc, r.direction());
+    auto c = dot(oc, oc) - radius * radius;
+    auto discriminant = half_b * half_b - a*c;
+    if (discriminant<0) return -1.0;
+    return (-half_b -std::sqrt(discriminant)) /a; 
+}
+
+
 color ray_color(const ray& r) {
-    // Background: blend white and blue based on ray direction's y
+    double t = hit_sphere(point3(0,0,-1), 0.6, r);
+    if (t > 0.0) {
+        return color(0.6, 0.8, 0.3); // solid red sphere for first hit
+    }
+    // background gradient
     vec3 unit_dir = unit_vector(r.direction());
-    double t = 0.5 * (unit_dir.y() + 1.0); // map [-1,1] -> [0,1]
-    return (1.0 - t) * color(1.0, 0.6, 0.2) + t * color(0.9, 0.2, 0.8);
+    t = 0.5 * (unit_dir.y() + 1.0);
+    return (1.0 - t)*color(1.0,0.8,1.0) + t*color(0.5,0.7,1.0);
 }
 
 int main() {
