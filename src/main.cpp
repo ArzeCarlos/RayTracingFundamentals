@@ -4,26 +4,34 @@
 #include "color.h"
 #include "ray.h"
 
-double hit_sphere(const point3& center, double radius, const ray&r){
+bool hit_sphere(const point3& center, double radius, const ray& r, double& t_hit) {
     vec3 oc = r.origin() - center;
-    auto a =  dot(r.direction(), r.direction());
+    auto a = dot(r.direction(), r.direction());
     auto half_b = dot(oc, r.direction());
-    auto c = dot(oc, oc) - radius * radius;
-    auto discriminant = half_b * half_b - a*c;
-    if (discriminant<0) return -1.0;
-    return (-half_b -std::sqrt(discriminant)) /a; 
+    auto c = dot(oc, oc) - radius*radius;
+    auto disc = half_b*half_b - a*c;
+    if (disc < 0) return false;
+    t_hit = (-half_b - std::sqrt(disc)) / a;
+    if (t_hit <= 0) {
+        t_hit = (-half_b + std::sqrt(disc)) / a;
+        if (t_hit <= 0) return false;
+    }
+    return true;
 }
 
 
 color ray_color(const ray& r) {
-    double t = hit_sphere(point3(0,0,-1), 0.6, r);
-    if (t > 0.0) {
-        return color(0.6, 0.8, 0.3); // solid red sphere for first hit
+    double t;
+    point3 center(0,0,-1);
+    double radius = 0.5;
+    if (hit_sphere(center, radius, r, t)) {
+        point3 p = r.at(t);
+        vec3 N = unit_vector(p - center);
+        return 0.5*color(N.x()+1, N.y()+1, N.z()+1);
     }
-    // background gradient
     vec3 unit_dir = unit_vector(r.direction());
-    t = 0.5 * (unit_dir.y() + 1.0);
-    return (1.0 - t)*color(1.0,0.8,1.0) + t*color(0.5,0.7,1.0);
+    double k = 0.5 * (unit_dir.y() + 1.0);
+    return (1.0 - k)*color(1,1,1) + k*color(0.5,0.7,1.0);
 }
 
 int main() {
