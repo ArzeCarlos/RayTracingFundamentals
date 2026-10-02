@@ -1,15 +1,18 @@
 #ifndef SPHERE_H
 #define SPHERE_H
 
+#include <memory>
 #include <cmath>
 #include "hittable.h"
+#include "material.h"
 
 class sphere : public hittable {
 public:
     sphere() {}
-    sphere(point3 cen, double r) : center(cen), radius(r) {}
+    sphere(point3 cen, double r, std::shared_ptr<material> m)
+        : center(cen), radius(r), mat_ptr(std::move(m)) {}
 
-    virtual bool hit(const ray& r, double t_min, double t_max, hit_record& rec) const override {
+    bool hit(const ray& r, double t_min, double t_max, hit_record& rec) const override {
         vec3 oc = r.origin() - center;
         auto a = dot(r.direction(), r.direction());
         auto half_b = dot(oc, r.direction());
@@ -18,9 +21,9 @@ public:
         if (disc < 0) return false;
         auto sqrtd = std::sqrt(disc);
 
-        auto root = (-half_b - sqrtd)/a;
+        auto root = (-half_b - sqrtd) / a;
         if (root < t_min || t_max < root) {
-            root = (-half_b + sqrtd)/a;
+            root = (-half_b + sqrtd) / a;
             if (root < t_min || t_max < root) return false;
         }
 
@@ -28,12 +31,14 @@ public:
         rec.p = r.at(rec.t);
         vec3 outward_normal = (rec.p - center) / radius;
         rec.set_face_normal(r, outward_normal);
+        rec.mat = mat_ptr;
         return true;
     }
 
 private:
     point3 center;
     double radius;
+    std::shared_ptr<material> mat_ptr;
 };
 
 #endif // SPHERE_H

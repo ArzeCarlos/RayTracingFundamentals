@@ -14,7 +14,7 @@ class camera{
             auto viewport_width  = viewport_height * aspect_ratio;
             auto focal_length = 1.0;
 
-            origin = point3(1,1,3);
+            origin = point3(0,0,0);
             horizontal = vec3(viewport_width, 0, 0);
             vertical   = vec3(0, viewport_height, 0);
             lower_left = origin - horizontal/2 - vertical/2 - vec3(0,0,focal_length);
