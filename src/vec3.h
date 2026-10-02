@@ -3,7 +3,7 @@
 
 #include <cmath>
 #include <iostream>
-
+#include "random_utils.h"
 
 /** 
  * @brief: Represent a mathematical 3D vector
@@ -36,6 +36,9 @@ class vec3{
             // Return true if the vector is close to zero in all dimensions.
             auto s = 1e-8;
             return (std::fabs(e[0]) < s) && (std::fabs(e[1]) < s) && (std::fabs(e[2]) < s);
+        }
+        static vec3 random(double min, double max) {
+            return vec3(random_double(min,max), random_double(min,max), random_double(min,max));
         }
 };
 
@@ -76,9 +79,17 @@ inline vec3 unit_vector(const vec3& v) {
     return v / length(v);
 }
 
+inline vec3 random_unit_vector() {
+    while (true) {
+        auto p = vec3::random(-1,1);
+        auto lensq = p.length_squared();
+        if (1e-160 < lensq && lensq <= 1.0)
+            return p / std::sqrt(lensq);
+    }
+}
+
 using point3 = vec3;  // 3D point
 using color  = vec3;  // RGB color
-
 
 
 #endif 
