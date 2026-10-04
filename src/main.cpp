@@ -1,82 +1,29 @@
 #include <iostream>
-#include <fstream>
 #include <memory>
-#include <cstdlib>
-#include <ctime>
-
-#include "vec3.h"
-#include "color.h"
-#include "ray.h"
-#include "hittable.h"
 #include "hittable_list.h"
 #include "sphere.h"
-#include "camera.h"
 #include "material.h"
-#include "random_utils.h"
-
-color ray_color(const ray& r, const hittable& world, int depth, double epsilon) {
-    if (depth <= 0) return color(0,0,0);
-
-    hit_record rec;
-    if (world.hit(r, epsilon, 1e30, rec)) {
-        ray scattered;
-        color attenuation;
-        if (rec.mat->scatter(r, rec, attenuation, scattered)) {
-            return attenuation * ray_color(scattered, world, depth-1, epsilon);
-        }
-        return color(0,0,0);
-    }
-
-    vec3 unit_direction = unit_vector(r.direction());
-    auto t = 0.5*(unit_direction.y() + 1.0);
-    return (1.0-t)*color(1.0, 1.0, 1.0) + t*color(0.5, 0.7, 1.0);
-}
+#include "camera.h"
 
 int main() {
-    std::srand(static_cast<unsigned int>(std::time(nullptr)));
-
-    // Image
-    const double aspect_ratio = 16.0 / 9.0;
-    const int image_width = 400;
-    const int samples_per_pixel = 50;
-    const int max_depth = 50;
-
-    // World
+    // World: ground + three spheres with simple materials
     hittable_list world;
+    auto ground = std::make_shared<lambertian>(color(0.8, 0.8, 0.0));
+    auto red    = std::make_shared<lambertian>(color(0.7, 0.3, 0.3));
+    auto metal1 = std::make_shared<metal>(color(0.8, 0.8, 0.8), 0.1);
 
-    auto material_ground = std::make_shared<lambertian>(color(0.8, 0.8, 0.0));
-    auto material_center = std::make_shared<lambertian>(color(0.7, 0.3, 0.3));
-    auto met_material= std::make_shared<metal>(color(0.8,0.8,0.8),0.0);
+    world.add(std::make_shared<sphere>(point3(0,-100.5,-1), 100.0, ground));
+    world.add(std::make_shared<sphere>(point3(0,0,-1),     0.5,  red));
+    world.add(std::make_shared<sphere>(point3(-1,0,-1),    0.5,  metal1));
 
-    world.add(std::make_shared<sphere>(point3( 0.0, -100.5, -1.0), 100.0, material_ground));
-    world.add(std::make_shared<sphere>(point3( 0.0,    0.0, -1.0),   0.5, material_center));
-    world.add(std::make_shared<sphere>(point3(1,0.0, -1.0),     0.2,  met_material));
+    camera cam;
+    cam.aspect_ratio = 16.0/9.0;
+    cam.image_width = 400;
+    cam.samples_per_pixel = 50;
+    cam.max_depth = 10;
+    cam.lookfrom = point3(3,3,2);
+    cam.lookat   = point3(0,0,-1);
+    cam.vfov     = 20.0;
 
-    // Camera
-    camera cam(aspect_ratio, image_width);
-
-    // Render
-    std::ofstream outfile("out/image.ppm");
-    outfile << "P3\n" << cam.width() << ' ' << cam.height() << "\n255\n";
-
-    // epsilon
-    double eps= 0.02;
-
-    for (int j = cam.height()-1; j >= 0; --j) {
-        std::clog << "\rScanlines remaining: " << j << ' ' << std::flush;
-        for (int i = 0; i < cam.width(); ++i) {
-            color pixel_color(0,0,0);
-            for (int s = 0; s < samples_per_pixel; ++s) {
-                auto u = (i + random_double()) / (cam.width()-1);
-                auto v = (j + random_double()) / (cam.height()-1);
-                ray r = cam.get_ray(u, v);
-                pixel_color += ray_color(r, world, max_depth, eps);
-            }
-            write_color(outfile, pixel_color, samples_per_pixel);
-        }
-    }
-
-    std::clog << "\nDone.\n";
-    outfile.close();
-    return 0;
+    cam.render(world);
 }

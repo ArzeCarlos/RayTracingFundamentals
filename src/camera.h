@@ -1,41 +1,119 @@
 #ifndef CAMERA_H
 #define CAMERA_H
 
+#include <algorithm>
+#include <fstream>
+#include <iostream>
+#include <string>
+
+#include "constants.h"
+#include "math_utils.h"
+#include "random_utils.h"
+#include "color.h"
+#include "hittable.h"
+#include "material.h"
+#include "vec3.h"
 #include "ray.h"
 
-class camera{
-    public:
-        camera(double aspect_ratio = 16.0 / 9.0, int image_width=400){
-            this->aspect_ratio = aspect_ratio;
-            this->image_width = image_width;
-            image_height = std::max(1, int(image_width / aspect_ratio));
+class camera {
+  public:
+    double aspect_ratio      = 16.0/9.0;
+    int    image_width       = 400;
+    int    samples_per_pixel = 50;
+    int    max_depth         = 10;
 
-            auto viewport_height = 2.0;
-            auto viewport_width  = viewport_height * aspect_ratio;
-            auto focal_length = 1.0;
+    double vfov     = 20;               // vertical FOV in degrees
+    point3 lookfrom = point3(3,3,2);
+    point3 lookat   = point3(0,0,-1);
+    vec3   vup      = vec3(0,1,0);
 
-            origin = point3(0,0,0);
-            horizontal = vec3(viewport_width, 0, 0);
-            vertical   = vec3(0, viewport_height, 0);
-            lower_left = origin - horizontal/2 - vertical/2 - vec3(0,0,focal_length);
+    // Output file path
+    std::string output_path = "out/image.ppm";
 
+    void render(const hittable& world) {
+        initialize();
+
+        std::ofstream out(output_path, std::ios::out | std::ios::trunc);
+        if (!out) {
+            std::clog << "Failed to open output file: " << output_path << '\n';
+            return;
         }
-        int width()const { return image_width;}
-        int height()const { return image_height;}
-        ray get_ray(double u, double v) const {
-            return ray(origin, lower_left + u*horizontal + v*vertical - origin);
+
+        double eps = 0.02;
+
+        out << "P3\n" << image_width << ' ' << image_height << "\n255\n";
+
+        for (int j = 0; j < image_height; ++j) {
+            std::clog << "\rScanlines remaining: " << (image_height - j) << ' ' << std::flush;
+            for (int i = 0; i < image_width; ++i) {
+                color pixel_color(0,0,0);
+                for (int s = 0; s < samples_per_pixel; ++s) {
+                    ray r = get_ray(i, j);
+                    pixel_color += ray_color(r, max_depth, world, eps);
+                }
+                write_color(out, pixel_color, samples_per_pixel);
+            }
+        }
+        std::clog << "\rDone.                 \n";
+    }
+
+  private:
+    int    image_height = 0;
+
+    point3 center;
+    point3 pixel00_loc;
+    vec3   pixel_delta_u;
+    vec3   pixel_delta_v;
+    vec3   u, v, w;
+
+    void initialize() {
+        image_height = std::max(1, int(image_width / aspect_ratio));
+        center = lookfrom;
+
+        // viewport
+        auto theta = degrees_to_radians(vfov);
+        auto h = std::tan(theta/2);
+        auto viewport_height = 2.0 * h;
+        auto viewport_width  = viewport_height * (double)image_width / image_height;
+
+        // camera basis
+        w = unit_vector(lookfrom - lookat);
+        u = unit_vector(cross(vup, w));
+        v = cross(w, u);
+
+        vec3 viewport_u = viewport_width * u;
+        vec3 viewport_v = -viewport_height * v;
+
+        pixel_delta_u = viewport_u / image_width;
+        pixel_delta_v = viewport_v / image_height;
+
+        auto viewport_upper_left = center - w - viewport_u/2 - viewport_v/2;
+        pixel00_loc = viewport_upper_left + 0.5 * (pixel_delta_u + pixel_delta_v);
+    }
+
+    ray get_ray(int i, int j) const {
+        vec3 jitter(random_double()-0.5, random_double()-0.5, 0);
+        point3 pixel_sample = pixel00_loc + ((i + jitter.x()) * pixel_delta_u)
+                                           + ((j + jitter.y()) * pixel_delta_v);
+        return ray(center, pixel_sample - center);
+    }
+
+    color ray_color(const ray& r, int depth, const hittable& world, double epsilon) const {
+        if (depth <= 0) return color(0,0,0);
+
+        hit_record rec;
+        if (world.hit(r, 0.001, infinity, rec)) {
+            ray scattered;
+            color attenuation;
+            if (rec.mat && rec.mat->scatter(r, rec, attenuation, scattered))
+                return attenuation * ray_color(scattered, depth-1, world, epsilon);
+            return color(0,0,0);
         }
 
-
-    private:
-        double aspect_ratio;
-        int image_width;
-        int image_height;
-
-        point3 origin;
-        vec3 horizontal;
-        vec3 vertical;
-        point3 lower_left;
+        vec3 unit_direction = unit_vector(r.direction());
+        auto a = 0.5*(unit_direction.y() + 1.0);
+        return (1.0-a)*color(1.0, 1.0, 1.0) + a*color(0.5, 0.7, 1.0);
+    }
 };
 
 #endif
