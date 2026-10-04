@@ -14,15 +14,15 @@
 #include "material.h"
 #include "random_utils.h"
 
-color ray_color(const ray& r, const hittable& world, int depth) {
+color ray_color(const ray& r, const hittable& world, int depth, double epsilon) {
     if (depth <= 0) return color(0,0,0);
 
     hit_record rec;
-    if (world.hit(r, 0.001, 1e30, rec)) {
+    if (world.hit(r, epsilon, 1e30, rec)) {
         ray scattered;
         color attenuation;
         if (rec.mat->scatter(r, rec, attenuation, scattered)) {
-            return attenuation * ray_color(scattered, world, depth-1);
+            return attenuation * ray_color(scattered, world, depth-1, epsilon);
         }
         return color(0,0,0);
     }
@@ -61,6 +61,9 @@ int main() {
     std::ofstream outfile("out/image.ppm");
     outfile << "P3\n" << cam.width() << ' ' << cam.height() << "\n255\n";
 
+    // epsilon
+    double eps= 0.02;
+
     for (int j = cam.height()-1; j >= 0; --j) {
         std::clog << "\rScanlines remaining: " << j << ' ' << std::flush;
         for (int i = 0; i < cam.width(); ++i) {
@@ -69,7 +72,7 @@ int main() {
                 auto u = (i + random_double()) / (cam.width()-1);
                 auto v = (j + random_double()) / (cam.height()-1);
                 ray r = cam.get_ray(u, v);
-                pixel_color += ray_color(r, world, max_depth);
+                pixel_color += ray_color(r, world, max_depth, eps);
             }
             write_color(outfile, pixel_color, samples_per_pixel);
         }
