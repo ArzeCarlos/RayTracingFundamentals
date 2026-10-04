@@ -9,16 +9,16 @@
  * @brief Writes a color to an output stream
  * 
  * @details Converts RGB component of a color [0.0, 1.0] to [0, 255]
- * and writes the result in the provided output stream.
+ * and writes the result in the provided output stream. Gamma-correct
  */
 
 inline void write_color(std::ostream& out, const color& pixel_color, int samples_per_pixel) {
-    auto r = pixel_color.x();
-    auto g = pixel_color.y();
-    auto b = pixel_color.z();
-
+    
     const double scale = 1.0 / samples_per_pixel;
-    r *= scale; g *= scale; b *= scale;
+
+    double r = std::sqrt(pixel_color.x() * scale);
+    double g = std::sqrt(pixel_color.y() * scale);
+    double b = std::sqrt(pixel_color.z() * scale);
 
     r = std::clamp(r, 0.0, 0.999);
     g = std::clamp(g, 0.0, 0.999);
