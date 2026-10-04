@@ -6,29 +6,29 @@ The project implements a 3D scene using rays, vectors, spheres, materials, a vir
 
 ## ✨ Features
 
--Ray tracing implemented from scratch in C++
--3D vector mathematics
--Rays and ray-object intersections
--Spheres as renderable objects
--Multiple material types:
---Lambertian diffuse
---Metal
---Dielectric / glass
--Diffuse reflection
--Metal reflection
--Fuzzy metal reflections
--Dielectric refraction
--Fresnel reflectance using Schlick's approximation
--Multiple recursive ray bounces
--Anti-aliasing using multiple samples per pixel
--Randomized ray sampling
--Configurable virtual camera
--Configurable field of view (FOV)
--Configurable camera position and orientation
--Depth of field
--Defocus blur
--Adjustable focus distance
--Adjustable defocus angle
+- Ray tracing implemented from scratch in C++
+- 3D vector mathematics
+- Rays and ray-object intersections
+- Spheres as renderable objects
+- Multiple material types:
+  - Lambertian diffuse
+  - Metal
+  - Dielectric / glass
+- Diffuse reflection
+- Metal reflection
+- Fuzzy metal reflections
+- Dielectric refraction
+- Fresnel reflectance using Schlick's approximation
+- Multiple recursive ray bounces
+- Anti-aliasing using multiple samples per pixel
+- Randomized ray sampling
+- Configurable virtual camera
+- Configurable field of view (FOV)
+- Configurable camera position and orientation
+- Depth of field
+- Defocus blur
+- Adjustable focus distance
+- Adjustable defocus angle
 
 ## 🛠️ Technologies
 
