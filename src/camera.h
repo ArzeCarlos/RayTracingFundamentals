@@ -22,10 +22,13 @@ class camera {
     int    samples_per_pixel = 50;
     int    max_depth         = 10;
 
-    double vfov     = 20;               // vertical FOV in degrees
+    double vfov     = 20;
     point3 lookfrom = point3(3,3,2);
     point3 lookat   = point3(0,0,-1);
     vec3   vup      = vec3(0,1,0);
+
+    double defocus_angle = 0.3; // degrees
+    double focus_dist    = 3.4; // world units
 
     // Output file path
     std::string output_path = "out/image.ppm";
@@ -39,9 +42,9 @@ class camera {
             return;
         }
 
-        double eps = 0.02;
-
         out << "P3\n" << image_width << ' ' << image_height << "\n255\n";
+
+        double eps = 0.02;
 
         for (int j = 0; j < image_height; ++j) {
             std::clog << "\rScanlines remaining: " << (image_height - j) << ' ' << std::flush;
@@ -65,18 +68,19 @@ class camera {
     vec3   pixel_delta_u;
     vec3   pixel_delta_v;
     vec3   u, v, w;
+    vec3   defocus_disk_u;
+    vec3   defocus_disk_v;
 
     void initialize() {
         image_height = std::max(1, int(image_width / aspect_ratio));
+
         center = lookfrom;
 
-        // viewport
         auto theta = degrees_to_radians(vfov);
         auto h = std::tan(theta/2);
-        auto viewport_height = 2.0 * h;
+        auto viewport_height = 2 * h * focus_dist;
         auto viewport_width  = viewport_height * (double)image_width / image_height;
 
-        // camera basis
         w = unit_vector(lookfrom - lookat);
         u = unit_vector(cross(vup, w));
         v = cross(w, u);
@@ -87,15 +91,28 @@ class camera {
         pixel_delta_u = viewport_u / image_width;
         pixel_delta_v = viewport_v / image_height;
 
-        auto viewport_upper_left = center - w - viewport_u/2 - viewport_v/2;
+        auto viewport_upper_left = center - (focus_dist * w) - viewport_u/2 - viewport_v/2;
         pixel00_loc = viewport_upper_left + 0.5 * (pixel_delta_u + pixel_delta_v);
+
+        auto defocus_radius = focus_dist * std::tan(degrees_to_radians(defocus_angle / 2));
+        defocus_disk_u = u * defocus_radius;
+        defocus_disk_v = v * defocus_radius;
     }
 
     ray get_ray(int i, int j) const {
         vec3 jitter(random_double()-0.5, random_double()-0.5, 0);
         point3 pixel_sample = pixel00_loc + ((i + jitter.x()) * pixel_delta_u)
                                            + ((j + jitter.y()) * pixel_delta_v);
-        return ray(center, pixel_sample - center);
+
+        point3 ray_origin = (defocus_angle <= 0) ? center : defocus_disk_sample();
+        vec3   ray_direction = pixel_sample - ray_origin;
+
+        return ray(ray_origin, ray_direction);
+    }
+
+    point3 defocus_disk_sample() const {
+        vec3 p = random_in_unit_disk();
+        return center + p.x()*defocus_disk_u + p.y()*defocus_disk_v;
     }
 
     color ray_color(const ray& r, int depth, const hittable& world, double epsilon) const {
